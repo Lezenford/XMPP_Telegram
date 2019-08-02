@@ -1,33 +1,37 @@
 package xmpptelegram.config;
 
 import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand;
+import xmpptelegram.telegram.TelegramBot;
+import xmpptelegram.telegram.script.ScriptRegistry;
 
-import javax.validation.constraints.NotBlank;
+import java.util.Collection;
 
+@Log4j2
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "telegram")
 public class TelegramConfig {
-    @NotBlank
+
+    @Value("${telegram.token}")
     private String token;
 
-    @NotBlank
+    @Value("${telegram.username}")
     private String username;
 
-    @NotBlank
+    @Value("${telegram.path}")
     private String path;
 
+    @Value("${telegram.cert}")
     private String cert;
 
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder("AnnotationConfiguration{");
-        sb.append("token='").append(token).append('\'');
-        sb.append(", username='").append(username).append('\'');
-        sb.append(", path='").append(path).append('\'');
-        sb.append('}');
-        return sb.toString();
+    @Bean
+    public TelegramBot telegramBot(Collection<BotCommand> botCommands, ScriptRegistry scriptRegistry) {
+        TelegramBot bot = new TelegramBot(this, scriptRegistry);
+        botCommands.forEach(bot::register);
+        return bot;
     }
 }

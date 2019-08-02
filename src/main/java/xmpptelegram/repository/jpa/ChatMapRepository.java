@@ -1,86 +1,75 @@
 package xmpptelegram.repository.jpa;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import xmpptelegram.model.ChatMap;
 import xmpptelegram.model.XMPPAccount;
 
 import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
-import java.util.List;
 
-@Slf4j
+@Log4j2
 @Repository
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class ChatMapRepository {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
-    public List<ChatMap> getAll() {
-        return null;
+    public ChatMap get(XMPPAccount account, String contact) {
+        try {
+            return entityManager
+                    .createQuery("SELECT c FROM ChatMap c JOIN FETCH c.xmppAccount WHERE " +
+                            "c.xmppAccount.id=:xmppAccount AND c.xmppContact=:xmppContact", ChatMap.class)
+                    .setParameter("xmppAccount", account.getId())
+                    .setParameter("xmppContact", contact)
+                    .getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    public ChatMap getByUserAndAccountAndContact(XMPPAccount account, String contact) {
+    public ChatMap get(long chatId) {
         try {
-            return entityManager.createNamedQuery(ChatMap.GET_BY_ACCOUNT_CONTACT, ChatMap.class)
-                                .setParameter("xmppAccount", account.getId())
-                                .setParameter("xmppContact", contact)
+            return entityManager.createQuery("SELECT c FROM ChatMap c WHERE c.chatId=:chatId", ChatMap.class)
+                                .setParameter("chatId", chatId)
                                 .getSingleResult();
-        } catch (NoResultException e) {
-            log.debug(String.format("Empty chatmap data for XMPPAccount: %s, contact: %s", account.getLogin() + "@" + account.getServer(),
-                    contact));
+        } catch (Exception e) {
             return null;
         }
     }
 
     @Transactional
-    public void create(ChatMap chatMap) throws Exception {
+    public boolean create(ChatMap chatMap) {
         try {
             entityManager.persist(chatMap);
+            return true;
         } catch (Exception e) {
-            log.error(String.format("Error adding chatmap! Data: %s", chatMap.toString()), e.getMessage());
-            throw e;
+            log.error(String.format("Can't create ChatMap in database! ChatMap: %s", chatMap.toString()), e);
+            return false;
         }
     }
 
     @Transactional
     public ChatMap update(ChatMap chatMap) {
-        return entityManager.merge(chatMap);
-    }
-
-    public ChatMap getByChatId(long chatId) {
         try {
-            return entityManager.createNamedQuery(ChatMap.GET_BY_CHATID, ChatMap.class)
-                                .setParameter("chatId", chatId)
-                                .getSingleResult();
-        } catch (NoResultException e) {
-            log.debug(String.format("Empty chatmap data for chatId: %d", chatId), e.getMessage());
+            return entityManager.merge(chatMap);
+        } catch (Exception e) {
+            log.error(String.format("Can't update ChatMap in database! ChatMap: %s", chatMap.toString()), e);
             return null;
         }
     }
+
 
     @Transactional
-    public void delete(ChatMap chatMap) {
+    public boolean delete(ChatMap chatMap) {
         try {
             entityManager.remove(chatMap);
+            return true;
         } catch (Exception e) {
-            log.warn(String.format("Error deleting chatmap: %s", chatMap.toString()), e.getMessage());
-        }
-    }
-
-    public ChatMap sendToTelegram(XMPPAccount xmppAccount, String contact) {
-        try {
-            return entityManager.createNamedQuery(ChatMap.GET_BY_ACCOUNT_CONTACT, ChatMap.class)
-                                .setParameter("xmppAccount", xmppAccount.getId())
-                                .setParameter("xmppContact", contact)
-                                .getSingleResult();
-        } catch (NoResultException e) {
-            log.warn(String.format("Empty chatmap data for XMPPAccount: %s, contact: %s",
-                    xmppAccount.getLogin() + "@" + xmppAccount.getServer(), contact), e.getMessage());
-            return null;
+            log.error(String.format("Can't remove ChatMap from database! ChatMap: %s", chatMap.toString()), e);
+            return false;
         }
     }
 }

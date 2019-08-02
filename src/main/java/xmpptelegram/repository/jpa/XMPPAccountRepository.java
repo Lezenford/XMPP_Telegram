@@ -1,42 +1,79 @@
 package xmpptelegram.repository.jpa;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import xmpptelegram.model.TelegramUser;
 import xmpptelegram.model.XMPPAccount;
 
 import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
+import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
+@Log4j2
 @Repository
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class XMPPAccountRepository {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
     public List<XMPPAccount> getAll() {
-        return entityManager.createNamedQuery(XMPPAccount.ALL, XMPPAccount.class)
-                            .getResultList();
+        try {
+            return entityManager.createQuery("SELECT a FROM XMPPAccount a", XMPPAccount.class)
+                                .getResultList();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<XMPPAccount> getAll(TelegramUser user) {
+        try {
+            return entityManager
+                    .createQuery("SELECT a FROM XMPPAccount a WHERE a.telegramUser.id = :userId", XMPPAccount.class)
+                    .setParameter("userId", user.getId())
+                    .getResultList();
+        } catch (Exception e) {
+            log.error(String.format("Can't get XMPPAccount list for existing user from database! User: %s",
+                    user.toString()), e);
+            return new ArrayList<>();
+        }
     }
 
     public XMPPAccount get(String server, String login) {
         try {
-            return entityManager.createNamedQuery(XMPPAccount.GET_BY_LOGIN_AND_SERVER, XMPPAccount.class)
-                                .setParameter("server", server)
-                                .setParameter("login", login)
-                                .getSingleResult();
-        } catch (NoResultException e) {
-            log.warn(String.format("User not found login: %s, server %s", login, server), e.getMessage());
+            return entityManager
+                    .createQuery("SELECT x FROM XMPPAccount x WHERE x.server=:server AND x.login=:login",
+                            XMPPAccount.class)
+                    .setParameter("server", server)
+                    .setParameter("login", login)
+                    .getSingleResult();
+        } catch (Exception e) {
             return null;
         }
     }
 
-    public int delete(XMPPAccount account) {
-        return 0;
+    public XMPPAccount get(int id) {
+        try {
+            return entityManager
+                    .createQuery("SELECT x FROM XMPPAccount x WHERE x.id=:id",
+                            XMPPAccount.class)
+                    .setParameter("id", id)
+                    .getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public boolean delete(XMPPAccount account) {
+        try {
+            entityManager.remove(account);
+            return true;
+        } catch (Exception e) {
+            log.error(String.format("Can't remove XMPPAccount from database! Account: %s", account.toString()), e);
+            return false;
+        }
     }
 
     @Transactional
@@ -44,29 +81,19 @@ public class XMPPAccountRepository {
         try {
             return entityManager.merge(account);
         } catch (Exception e) {
-            log.warn(String.format("Error updating XMPP-account! Server: %s, login: %s", account.getServer(), account.getLogin()),
-                    e.getMessage());
+            log.error(String.format("Can't update XMPPAccount in database! Account: %s", account.toString()), e);
             return null;
         }
     }
 
     @Transactional
-    public void create(XMPPAccount account) {
-        entityManager.persist(account);
-    }
-
-    public XMPPAccount getById(int id) {
-        return entityManager.find(XMPPAccount.class, id);
-    }
-
-    public List<XMPPAccount> getAllByUser(int userId) {
+    public boolean create(XMPPAccount account) {
         try {
-            return entityManager.createNamedQuery(XMPPAccount.GET_ALL_BY_USER, XMPPAccount.class)
-                                .setParameter("telegramUserId", userId)
-                                .getResultList();
-        } catch (NoResultException e) {
-            log.warn(String.format("Users not found telegram user id: %s", userId), e.getMessage());
-            return null;
+            entityManager.persist(account);
+            return true;
+        } catch (Exception e) {
+            log.error(String.format("Can't create XMPPAccount in database! Account: %s", account.toString()), e);
+            return false;
         }
     }
 }

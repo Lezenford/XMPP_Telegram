@@ -1,30 +1,18 @@
 package xmpptelegram.controller;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.web.bind.annotation.*;
-import org.telegram.telegrambots.api.methods.BotApiMethod;
-import org.telegram.telegrambots.api.objects.Update;
-import xmpptelegram.bot.TelegramBot;
-import xmpptelegram.bot.XMPPBot;
-import xmpptelegram.repository.jpa.MessageRepository;
-import xmpptelegram.service.ChatMapService;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import xmpptelegram.telegram.TelegramBot;
 
-@Slf4j
+@Log4j2
 @RestController
+@RequiredArgsConstructor
 public class RESTController {
 
-    @Autowired
-    private TelegramBot telegramBot;
-
-    @Autowired
-    private MessageRepository messageRepository;
-
-    @Autowired
-    private ChatMapService chatMapService;
-
-    @Autowired
-    private XMPPBot xmppBot;
+    private final TelegramBot telegramBot;
 
     @RequestMapping("/")
     public String test() {
@@ -35,17 +23,6 @@ public class RESTController {
     public String secured() {
         return "HTTPS Enable";
     }
-
-//    @RequestMapping("/stop")
-//    public String stop(){
-//        xmppBot.stop();
-//        return "XMPP server stoped";
-//    }
-//    @RequestMapping("/start")
-//    public String start(){
-//        xmppBot.start();
-//        return "XMPP server started";
-//    }
 
     @RequestMapping(value = "/${telegram.token}", method = RequestMethod.POST)
     @ResponseBody

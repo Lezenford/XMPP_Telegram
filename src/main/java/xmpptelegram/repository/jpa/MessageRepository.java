@@ -1,49 +1,51 @@
 package xmpptelegram.repository.jpa;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import xmpptelegram.model.UnsentMessage;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
+@Log4j2
 @Repository
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class MessageRepository {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
     @Transactional
-    public void create(UnsentMessage message) {
+    public boolean create(UnsentMessage message) {
         try {
             entityManager.persist(message);
+            return true;
         } catch (Exception e) {
-            log.error(String.format("Error adding message! Message: %s", message.toString()), e);
+            log.error(String.format("Can't create UnsentMessage in database! Message: %s", message.toString()), e);
+            return false;
         }
     }
 
     @Transactional
-    public void delete(UnsentMessage message) {
+    public boolean delete(UnsentMessage message) {
         try {
-            entityManager.createNamedQuery(UnsentMessage.REMOVE)
-                         .setParameter("id", message.getId()).executeUpdate();
+            entityManager.remove(message);
+            return true;
         } catch (Exception e) {
-            log.error(String.format("Error deleting message! Message: %s", message.toString()), e);
+            log.error(String.format("Can't remove UnsentMessage in database! Message: %s", message.toString()), e);
+            return false;
         }
     }
 
     public List<UnsentMessage> getAll() {
         try {
-            return entityManager.createNamedQuery(UnsentMessage.GET_ALL, UnsentMessage.class)
+            return entityManager.createQuery("SELECT m FROM UnsentMessage m ORDER BY m.id", UnsentMessage.class)
                                 .getResultList();
         } catch (NoResultException e) {
-            log.error("Error getting all messages", e);
             return new ArrayList<>();
         }
     }

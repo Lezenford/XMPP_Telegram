@@ -1,66 +1,72 @@
 package xmpptelegram.repository.jpa;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import xmpptelegram.model.TelegramUser;
 
 import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
+import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
+@Log4j2
 @Repository
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class TelegramUserRepository {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
     public List<TelegramUser> getAll() {
-        return entityManager.createNamedQuery(TelegramUser.ALL, TelegramUser.class)
-                            .getResultList();
+        try {
+            return entityManager.createQuery("SELECT t FROM TelegramUser t", TelegramUser.class)
+                                .getResultList();
+        } catch (Exception e) {
+            log.error("Can't get TelegramAccount list from database!", e);
+            return new ArrayList<>();
+        }
     }
 
-    public TelegramUser getById(int id) {
+    public TelegramUser get(int id) {
         try {
-            return entityManager.createNamedQuery(TelegramUser.GET_BY_ID, TelegramUser.class)
+            return entityManager.createQuery("SELECT t FROM TelegramUser t WHERE t.id=:id", TelegramUser.class)
                                 .setParameter("id", id)
                                 .getSingleResult();
-        } catch (NoResultException e) {
-            log.warn(String.format("User not found %d", id), e.getMessage());
+        } catch (Exception e) {
             return null;
         }
     }
 
     @Transactional
-    public void delete(TelegramUser user) throws Exception {
+    public boolean delete(TelegramUser user) {
         try {
             entityManager.remove(user);
+            return true;
         } catch (Exception e) {
-            log.error(String.format("Error deleting Telegram-account! id: %s", user.getId()), e.getMessage());
+            log.error(String.format("Can't remove TelegramAccount from database! Account: %s", user.toString()), e);
+            return false;
         }
     }
 
     @Transactional
-    public void update(TelegramUser user) throws Exception {
+    public TelegramUser update(TelegramUser user) {
         try {
-            entityManager.merge(user);
+            return entityManager.merge(user);
         } catch (Exception e) {
-            log.error(String.format("Error updating Telegram-account! id: %d, username: %s", user.getId(), user.getName()), e.getMessage());
-            throw e;
+            log.error(String.format("Can't update TelegramAccount in database! Account: %s", user.toString()), e);
+            return null;
         }
     }
 
     @Transactional
-    public void create(int id, String username) throws Exception {
+    public boolean create(TelegramUser user) {
         try {
-            TelegramUser user = new TelegramUser(id, username);
             entityManager.persist(user);
+            return true;
         } catch (Exception e) {
-            log.error(String.format("Error adding Telegram-account! id: %d, username: %s", id, username), e.getMessage());
-            throw e;
+            log.error(String.format("Can't create TelegramAccount in database! Account: %s", user.toString()), e);
+            return false;
         }
     }
 }
